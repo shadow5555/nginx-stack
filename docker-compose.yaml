@@ -1,0 +1,55 @@
+
+services:
+  proxymanager:
+    container_name: proxymanager
+    image: jc21/nginx-proxy-manager
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+      - DB_MYSQL_HOST=proxymanagerdb
+      - DB_MYSQL_PORT=3306
+      - DB_MYSQL_USER=$PROXYUSER
+      - DB_MYSQL_PASSWORD=$PROXYPSW
+      - DB_MYSQL_NAME=$PROXYDB
+    ports:
+      - 980:80 # use a different local port if on synology
+      - 981:81
+      - 443:443 # use a different local port if on synology
+    volumes:
+      - $DOCKER_PATH/proxymanager/data:/data
+      - $DOCKER_PATH/proxymanager/letsencrypt:/etc/letsencrypt
+    restart: always
+    depends_on:
+      - proxymanagerdb
+
+  proxymanagerdb:
+    container_name: proxymanagerdb
+    image: ghcr.io/linuxserver/mariadb
+    environment:
+      - MYSQL_ROOT_PASSWORD=$PROXYROOTPSW
+      - MYSQL_DATABASE=$PROXYDB
+      - MYSQL_USER=$PROXYUSER
+      - MYSQL_PASSWORD=$PROXYPSW
+    volumes:
+      - $DOCKER_PATH/proxymanagerdb/config:/config
+    restart: always
+    labels:
+      autoheal: 'true'
+    # healthcheck:
+    #   test: ["CMD", "mysqladmin", "ping", "--silent"]
+    restart: unless-stopped
+
+  duckdns:
+    image: linuxserver/duckdns
+    container_name: duckdns
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+      - SUBDOMAINS=$DUCKSUBDOMS
+      - TOKEN=$DUCKTOKEN
+      - LOG_FILE=true #optional
+    volumes:
+      - $DOCKER_PATH/duckdns:/config #optional - use if log_file true
+    restart: unless-stopped
